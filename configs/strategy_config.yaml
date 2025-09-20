@@ -1,0 +1,148 @@
+# 策略目标与约束配置
+# 基于README.md第1节：目标与约束
+
+strategy:
+  # 策略基本信息
+  name: "crypto_trend_daily"
+  description: "加密货币日级趋势策略"
+  version: "1.0.0"
+  
+  # 策略类型
+  type: "trend"  # 趋势策略
+  
+  # 交易频率
+  frequency: "daily"  # 日级交易
+  
+  # 资产类型
+  asset_class: "crypto"  # 加密货币
+  
+  # 目标函数
+  objective: "sharpe_ratio"  # 夏普比率最大化
+  
+  # 基准
+  benchmark: "BTC"  # 以比特币作为基准
+
+# 交易约束
+constraints:
+  # 手续费模型 - 基于币安现货交易费率
+  transaction_costs:
+    # 现货交易手续费（单边）
+    spot_fee_rate: 0.001  # 0.1% (普通用户基础费率)
+    spot_fee_rate_with_bnb: 0.00075  # 0.075% (使用BNB抵扣)
+    
+    # 合约交易手续费（如需要）
+    futures_maker_fee: 0.0002  # 0.02% (挂单)
+    futures_taker_fee: 0.0004  # 0.04% (吃单)
+    futures_maker_fee_with_bnb: 0.00018  # 0.018% (BNB抵扣挂单)
+    futures_taker_fee_with_bnb: 0.00036  # 0.036% (BNB抵扣吃单)
+    
+    # 滑点模型
+    slippage_model: "linear"
+    slippage_rate: 0.0005  # 0.05% 基础滑点
+    
+    # 最小交易金额
+    min_trade_amount: 10  # USDT
+    
+  # 风险约束
+  risk_limits:
+    # 最大回撤
+    max_drawdown: 0.20  # 20%
+    
+    # 单日最大损失
+    max_daily_loss: 0.05  # 5%
+    
+    # 单品种最大持仓比例
+    max_position_per_asset: 0.30  # 30%
+    
+    # 最大杠杆（如使用合约）
+    max_leverage: 3.0
+    
+    # 止损比例
+    stop_loss: 0.10  # 10%
+    
+    # 止盈比例
+    take_profit: 0.20  # 20%
+
+# 资产池配置
+asset_universe:
+  # 主要交易对
+  primary_pairs:
+    - "BTCUSDT"
+    - "ETHUSDT"
+    - "BNBUSDT"
+    - "ADAUSDT"
+    - "SOLUSDT"
+    - "XRPUSDT"
+    - "DOTUSDT"
+    - "LINKUSDT"
+    - "LTCUSDT"
+    - "BCHUSDT"
+  
+  # 最小市值要求（USDT）
+  min_market_cap: 1000000000  # 10亿USDT
+  
+  # 最小日交易量要求（USDT）
+  min_daily_volume: 100000000  # 1亿USDT
+
+# 仓位管理
+position_management:
+  # 仓位计算方法
+  sizing_method: "volatility_target"  # 波动率目标法
+  
+  # 目标波动率
+  target_volatility: 0.15  # 15%年化波动率
+  
+  # 最大仓位
+  max_total_position: 0.95  # 95%
+  
+  # 现金保留比例
+  cash_reserve: 0.05  # 5%
+  
+  # 再平衡频率
+  rebalance_frequency: "daily"
+
+# 回测参数
+backtest:
+  # 回测开始时间
+  start_date: "2020-01-01"
+  
+  # 回测结束时间
+  end_date: "2024-12-31"
+  
+  # 初始资金
+  initial_capital: 100000  # USDT
+  
+  # 数据频率
+  data_frequency: "1d"  # 日线数据
+
+# 风险指标目标
+risk_metrics:
+  # 目标夏普比率
+  target_sharpe: 1.5
+  
+  # 目标年化收益率
+  target_annual_return: 0.30  # 30%
+  
+  # 最大容忍回撤
+  max_tolerable_drawdown: 0.25  # 25%
+  
+  # 目标胜率
+  target_win_rate: 0.55  # 55%
+  
+  # 目标盈亏比
+  target_profit_loss_ratio: 1.5
+
+# 监控与告警
+monitoring:
+  # 实时监控指标
+  real_time_metrics:
+    - "current_drawdown"
+    - "daily_pnl"
+    - "position_exposure"
+    - "sharpe_ratio_rolling"
+  
+  # 告警阈值
+  alerts:
+    drawdown_threshold: 0.15  # 回撤超过15%告警
+    daily_loss_threshold: 0.03  # 单日损失超过3%告警
+    position_concentration_threshold: 0.40  # 单品种持仓超过40%告警
