@@ -1,0 +1,327 @@
+# Apache Airflow Docker Compose 配置
+# 用于本地开发和测试环境部署
+
+x-airflow-common:
+  &airflow-common
+  # 使用官方Airflow镜像
+  image: apache/airflow:2.7.0-python3.10
+  # 或者使用自定义镜像（如果需要额外依赖）
+  # build: .
+  environment:
+    &airflow-common-env
+    # Airflow核心配置
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+    
+    # Airflow Web服务器配置
+    AIRFLOW__WEBSERVER__SECRET_KEY: 'your-secret-key-here-change-in-production'
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'true'
+    AIRFLOW__WEBSERVER__RBAC: 'true'
+    
+    # 日志配置
+    AIRFLOW__LOGGING__LOGGING_LEVEL: INFO
+    AIRFLOW__LOGGING__FAB_LOGGING_LEVEL: WARN
+    
+    # 调度器配置
+    AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: 300
+    AIRFLOW__SCHEDULER__CATCHUP_BY_DEFAULT: 'false'
+    AIRFLOW__SCHEDULER__MAX_TIS_PER_QUERY: 512
+    
+    # 安全配置
+    AIRFLOW__WEBSERVER__WARN_DEPLOYMENT_EXPOSURE: 'false'
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth'
+    
+    # 邮件配置
+    AIRFLOW__EMAIL__EMAIL_BACKEND: airflow.utils.email.send_email_smtp
+    AIRFLOW__SMTP__SMTP_HOST: ${SMTP_HOST:-localhost}
+    AIRFLOW__SMTP__SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+    AIRFLOW__SMTP__SMTP_SSL: ${SMTP_SSL:-false}
+    AIRFLOW__SMTP__SMTP_PORT: ${SMTP_PORT:-587}
+    AIRFLOW__SMTP__SMTP_USER: ${SMTP_USER:-}
+    AIRFLOW__SMTP__SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+    AIRFLOW__SMTP__SMTP_MAIL_FROM: ${SMTP_MAIL_FROM:-airflow@company.com}
+    
+    # 机器学习项目特定配置
+    ML_PROJECT_ROOT: /opt/airflow/ml_project
+    ML_DATA_PATH: /opt/airflow/data
+    ML_MODELS_PATH: /opt/airflow/models
+    ML_LOGS_PATH: /opt/airflow/logs/ml
+    
+    # API密钥（从环境变量读取）
+    BINANCE_API_KEY: ${BINANCE_API_KEY:-}
+    BINANCE_SECRET_KEY: ${BINANCE_SECRET_KEY:-}
+    SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+    
+    # 数据库连接
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: 5432
+    POSTGRES_DB: ml_data
+    POSTGRES_USER: ${POSTGRES_USER:-ml_user}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ml_password}
+    
+    # Redis连接
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
+    REDIS_DB: 1
+    
+    # 额外的Python包
+    _PIP_ADDITIONAL_REQUIREMENTS: 'pandas numpy scipy requests pyyaml python-binance flask-limiter'
+    
+  volumes:
+    - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
+    - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
+    - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
+    - ${AIRFLOW_PROJ_DIR:-.}/src:/opt/airflow/ml_project/src
+    - ${AIRFLOW_PROJ_DIR:-.}/configs:/opt/airflow/ml_project/configs
+    - ./data:/opt/airflow/data
+    - ./models:/opt/airflow/models
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on:
+    &airflow-common-depends-on
+    redis:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+
+services:
+  # PostgreSQL数据库
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+    restart: always
+    ports:
+      - "5432:5432"
+
+  # Redis缓存和消息代理
+  redis:
+    image: redis:latest
+    expose:
+      - 6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 30s
+      retries: 50
+    restart: always
+    ports:
+      - "6379:6379"
+
+  # Airflow Web服务器
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - 8080:8080
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  # Airflow调度器
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  # Airflow Worker（Celery执行器）
+  airflow-worker:
+    <<: *airflow-common
+    command: celery worker
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    environment:
+      <<: *airflow-common-env
+      # 必需的Celery配置
+      DUMB_INIT_SETSID: "0"
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  # Airflow触发器（用于传感器）
+  airflow-triggerer:
+    <<: *airflow-common
+    command: triggerer
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  # Airflow初始化
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        echo "Initializing Airflow..."
+        if [[ -z "$${AIRFLOW_UID}" ]]; then
+          echo "AIRFLOW_UID not set, using default 50000"
+          export AIRFLOW_UID=50000
+        fi
+        echo "Creating directories..."
+        mkdir -p /sources/logs /sources/dags /sources/plugins
+        chown -R "$${AIRFLOW_UID}:0" /sources/{logs,dags,plugins}
+        echo "Initializing Airflow database..."
+        airflow db init
+        echo "Creating admin user..."
+        airflow users create \
+          --username admin \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email admin@example.com \
+          --password admin
+        echo "Airflow initialization completed successfully!"
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_UPGRADE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+      _PIP_ADDITIONAL_REQUIREMENTS: ''
+    user: "0:0"
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}:/sources
+
+  # Airflow CLI（用于管理任务）
+  airflow-cli:
+    <<: *airflow-common
+    profiles:
+      - debug
+    environment:
+      <<: *airflow-common-env
+      CONNECTION_CHECK_MAX_COUNT: "0"
+    command:
+      - bash
+      - -c
+      - airflow
+
+  # Flower（Celery监控界面）
+  flower:
+    <<: *airflow-common
+    command: celery flower
+    profiles:
+      - flower
+    ports:
+      - 5555:5555
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:5555/"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  # ML数据库（用于存储ML相关数据）
+  ml-postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ml_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ml_password}
+      POSTGRES_DB: ${POSTGRES_USER:-ml_user}
+    volumes:
+      - ml-postgres-db-volume:/var/lib/postgresql/data
+      - ./init-scripts/ml-init.sql:/docker-entrypoint-initdb.d/ml-init.sql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-ml_user}"]
+      interval: 5s
+      retries: 5
+    restart: always
+    ports:
+      - "5433:5432"
+
+  # Redis（用于ML缓存）
+  ml-redis:
+    image: redis:latest
+    command: redis-server --appendonly yes
+    volumes:
+      - ml-redis-volume:/data
+    ports:
+      - "6380:6379"
+    restart: always
+
+  # Jupyter Notebook（可选，用于开发和调试）
+  jupyter:
+    image: jupyter/scipy-notebook:latest
+    profiles:
+      - jupyter
+    ports:
+      - "8888:8888"
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}/notebooks:/home/jovyan/work
+      - ${AIRFLOW_PROJ_DIR:-.}/src:/home/jovyan/work/src
+      - ${AIRFLOW_PROJ_DIR:-.}/data:/home/jovyan/work/data
+    environment:
+      JUPYTER_ENABLE_LAB: "yes"
+    restart: always
+
+  # MLflow跟踪服务器（可选）
+  mlflow:
+    image: python:3.10-slim
+    profiles:
+      - mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow-volume:/mlflow
+    command: >
+      bash -c "
+        pip install mlflow psycopg2-binary &&
+        mlflow server 
+        --backend-store-uri postgresql://${POSTGRES_USER:-ml_user}:${POSTGRES_PASSWORD:-ml_password}@ml-postgres:5432/ml_data
+        --default-artifact-root /mlflow/artifacts
+        --host 0.0.0.0
+        --port 5000
+      "
+    depends_on:
+      - ml-postgres
+    restart: always
+
+volumes:
+  postgres-db-volume:
+  ml-postgres-db-volume:
+  ml-redis-volume:
+  mlflow-volume:

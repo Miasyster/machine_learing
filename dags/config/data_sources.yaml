@@ -1,0 +1,165 @@
+# 数据源配置
+
+# Binance API配置
+binance_config:
+  api_url: 'https://api.binance.com'
+  api_key: '${BINANCE_API_KEY}'  # 从环境变量获取
+  api_secret: '${BINANCE_API_SECRET}'  # 从环境变量获取
+  
+  # 请求限制配置
+  rate_limits:
+    requests_per_minute: 1200
+    weight_per_minute: 6000
+    orders_per_second: 10
+    orders_per_day: 200000
+  
+  # 重试配置
+  retry_config:
+    max_retries: 3
+    backoff_factor: 2
+    timeout_seconds: 30
+
+# 支持的交易对配置
+trading_pairs:
+  major_pairs:
+    - symbol: 'BTCUSDT'
+      name: 'Bitcoin/USDT'
+      priority: 1
+      intervals: ['1m', '5m', '15m', '1h', '4h', '1d']
+      
+    - symbol: 'ETHUSDT'
+      name: 'Ethereum/USDT'
+      priority: 1
+      intervals: ['1m', '5m', '15m', '1h', '4h', '1d']
+      
+    - symbol: 'BNBUSDT'
+      name: 'BNB/USDT'
+      priority: 2
+      intervals: ['5m', '15m', '1h', '4h', '1d']
+  
+  altcoin_pairs:
+    - symbol: 'ADAUSDT'
+      name: 'Cardano/USDT'
+      priority: 3
+      intervals: ['15m', '1h', '4h', '1d']
+      
+    - symbol: 'DOTUSDT'
+      name: 'Polkadot/USDT'
+      priority: 3
+      intervals: ['15m', '1h', '4h', '1d']
+      
+    - symbol: 'LINKUSDT'
+      name: 'Chainlink/USDT'
+      priority: 3
+      intervals: ['15m', '1h', '4h', '1d']
+
+# 数据获取配置
+data_fetch_config:
+  # 历史数据获取
+  historical_data:
+    default_limit: 1000  # 每次获取的K线数量
+    max_limit: 1500
+    lookback_days: 30  # 默认获取30天历史数据
+    
+  # 实时数据获取
+  realtime_data:
+    fetch_interval_minutes: 1
+    buffer_size: 100
+    
+  # 数据验证
+  validation:
+    required_fields: ['open_time', 'open', 'high', 'low', 'close', 'volume']
+    price_change_threshold: 0.5  # 价格变化超过50%时标记为异常
+    volume_change_threshold: 10.0  # 成交量变化超过10倍时标记为异常
+
+# 数据存储配置
+storage_config:
+  # 文件格式配置
+  file_formats:
+    raw_data: 'csv'
+    processed_data: 'parquet'
+    features_data: 'parquet'
+    
+  # 分区策略
+  partitioning:
+    by_date: true
+    by_symbol: true
+    date_format: 'YYYY/MM/DD'
+    
+  # 压缩配置
+  compression:
+    raw_data: 'gzip'
+    processed_data: 'snappy'
+    features_data: 'snappy'
+    
+  # 数据保留策略
+  retention:
+    raw_data_days: 90
+    processed_data_days: 365
+    features_data_days: 365
+    logs_days: 30
+
+# 数据库连接配置
+database_config:
+  # PostgreSQL配置（用于元数据存储）
+  postgres:
+    host: '${POSTGRES_HOST}'
+    port: 5432
+    database: '${POSTGRES_DB}'
+    username: '${POSTGRES_USER}'
+    password: '${POSTGRES_PASSWORD}'
+    
+  # Redis配置（用于缓存）
+  redis:
+    host: '${REDIS_HOST}'
+    port: 6379
+    database: 0
+    password: '${REDIS_PASSWORD}'
+    
+  # InfluxDB配置（用于时序数据存储，可选）
+  influxdb:
+    host: '${INFLUXDB_HOST}'
+    port: 8086
+    database: '${INFLUXDB_DB}'
+    username: '${INFLUXDB_USER}'
+    password: '${INFLUXDB_PASSWORD}'
+
+# 外部服务配置
+external_services:
+  # 消息通知服务
+  notification:
+    slack:
+      webhook_url: '${SLACK_WEBHOOK_URL}'
+      channel: '#data-alerts'
+      
+    email:
+      smtp_server: '${SMTP_SERVER}'
+      smtp_port: 587
+      username: '${SMTP_USERNAME}'
+      password: '${SMTP_PASSWORD}'
+      
+  # 监控服务
+  monitoring:
+    prometheus:
+      gateway_url: '${PROMETHEUS_GATEWAY_URL}'
+      job_name: 'airflow_dags'
+      
+    grafana:
+      dashboard_url: '${GRAFANA_DASHBOARD_URL}'
+
+# 环境配置
+environment_config:
+  development:
+    debug: true
+    log_level: 'DEBUG'
+    data_sample_size: 100
+    
+  staging:
+    debug: false
+    log_level: 'INFO'
+    data_sample_size: 1000
+    
+  production:
+    debug: false
+    log_level: 'WARNING'
+    data_sample_size: null  # 使用全量数据

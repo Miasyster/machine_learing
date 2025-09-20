@@ -1,0 +1,181 @@
+# 数据质量阈值配置
+
+# 数据完整性检查阈值
+data_integrity:
+  # 缺失值检查
+  missing_values:
+    max_missing_percentage: 5.0  # 最大缺失值百分比
+    critical_fields: ['open', 'high', 'low', 'close', 'volume']
+    critical_missing_threshold: 1.0  # 关键字段缺失值阈值
+    
+  # 重复数据检查
+  duplicates:
+    max_duplicate_percentage: 2.0
+    duplicate_check_fields: ['open_time', 'symbol']
+    
+  # 数据连续性检查
+  continuity:
+    max_gap_minutes: 60  # 最大时间间隔（分钟）
+    min_data_points: 100  # 最小数据点数量
+    continuity_threshold: 95.0  # 连续性百分比阈值
+
+# OHLC价格逻辑检查阈值
+price_logic:
+  # 价格关系检查
+  ohlc_relationships:
+    high_low_tolerance: 0.001  # high >= low 的容差
+    open_close_range_tolerance: 0.001  # open/close 在 [low, high] 范围内的容差
+    
+  # 价格变化检查
+  price_changes:
+    max_price_change_percentage: 50.0  # 单个K线最大价格变化
+    max_gap_percentage: 20.0  # 相邻K线最大价格跳跃
+    min_price_value: 0.000001  # 最小价格值
+    
+  # 价格异常检查
+  price_anomalies:
+    z_score_threshold: 4.0  # Z-score异常值阈值
+    iqr_multiplier: 3.0  # IQR异常值倍数
+    rolling_window: 100  # 滚动窗口大小
+
+# 成交量逻辑检查阈值
+volume_logic:
+  # 成交量基础检查
+  basic_checks:
+    min_volume: 0.0  # 最小成交量
+    max_volume_multiplier: 1000.0  # 最大成交量倍数（相对于平均值）
+    
+  # 成交量异常检查
+  volume_anomalies:
+    z_score_threshold: 5.0  # Z-score异常值阈值
+    iqr_multiplier: 5.0  # IQR异常值倍数
+    rolling_window: 100  # 滚动窗口大小
+    
+  # 成交量变化检查
+  volume_changes:
+    max_volume_change_multiplier: 100.0  # 相邻K线最大成交量变化倍数
+    volume_spike_threshold: 10.0  # 成交量激增阈值
+
+# 时间序列检查阈值
+time_series:
+  # 时间戳检查
+  timestamp_checks:
+    future_data_tolerance_minutes: 5  # 未来数据容差（分钟）
+    timestamp_format_strict: true  # 严格时间戳格式检查
+    
+  # 时间间隔检查
+  interval_checks:
+    expected_intervals:
+      '1m': 60  # 1分钟 = 60秒
+      '5m': 300  # 5分钟 = 300秒
+      '15m': 900  # 15分钟 = 900秒
+      '1h': 3600  # 1小时 = 3600秒
+      '4h': 14400  # 4小时 = 14400秒
+      '1d': 86400  # 1天 = 86400秒
+    interval_tolerance_percentage: 5.0  # 时间间隔容差百分比
+
+# 特征质量检查阈值
+feature_quality:
+  # 技术指标检查
+  technical_indicators:
+    # 移动平均线
+    sma_ema_checks:
+      max_deviation_percentage: 10.0  # SMA和EMA最大偏差
+      smoothness_threshold: 0.95  # 平滑度阈值
+      
+    # RSI检查
+    rsi_checks:
+      valid_range: [0, 100]  # RSI有效范围
+      extreme_threshold: 5.0  # 极值持续时间阈值（天）
+      
+    # 布林带检查
+    bollinger_checks:
+      band_width_min: 0.01  # 最小带宽
+      band_width_max: 0.5   # 最大带宽
+      price_outside_bands_threshold: 5.0  # 价格超出布林带的最大百分比
+      
+    # MACD检查
+    macd_checks:
+      signal_line_smoothness: 0.9  # 信号线平滑度
+      histogram_range_check: true  # 直方图范围检查
+      
+  # 特征相关性检查
+  correlation_checks:
+    max_correlation_threshold: 0.95  # 最大相关性阈值（避免多重共线性）
+    min_correlation_with_price: 0.1  # 与价格的最小相关性
+    
+  # 特征分布检查
+  distribution_checks:
+    skewness_threshold: 3.0  # 偏度阈值
+    kurtosis_threshold: 10.0  # 峰度阈值
+    normality_test_p_value: 0.05  # 正态性检验p值
+
+# 数据质量评分权重
+quality_scoring:
+  weights:
+    data_completeness: 0.25      # 数据完整性权重
+    price_logic: 0.25           # 价格逻辑权重
+    volume_logic: 0.15          # 成交量逻辑权重
+    time_series_continuity: 0.20 # 时间序列连续性权重
+    feature_quality: 0.15       # 特征质量权重
+    
+  # 评分等级
+  score_levels:
+    excellent: 95.0   # 优秀
+    good: 85.0        # 良好
+    acceptable: 75.0  # 可接受
+    poor: 60.0        # 较差
+    critical: 50.0    # 严重问题
+
+# 告警配置
+alerting:
+  # 告警级别
+  alert_levels:
+    critical:
+      overall_score_threshold: 60.0
+      missing_data_threshold: 10.0
+      price_anomaly_threshold: 20.0
+      
+    warning:
+      overall_score_threshold: 80.0
+      missing_data_threshold: 5.0
+      price_anomaly_threshold: 10.0
+      
+    info:
+      overall_score_threshold: 90.0
+      missing_data_threshold: 2.0
+      price_anomaly_threshold: 5.0
+      
+  # 告警频率限制
+  rate_limiting:
+    max_alerts_per_hour: 10
+    max_alerts_per_day: 50
+    cooldown_minutes: 30  # 相同类型告警的冷却时间
+    
+  # 告警渠道
+  channels:
+    email: true
+    slack: true
+    webhook: false
+    
+# 数据修复配置
+data_repair:
+  # 自动修复开关
+  auto_repair:
+    missing_values: true
+    outliers: false  # 异常值不自动修复，需要人工确认
+    duplicates: true
+    
+  # 修复策略
+  repair_strategies:
+    missing_values:
+      method: 'interpolation'  # 插值法
+      backup_method: 'forward_fill'  # 前向填充
+      
+    duplicates:
+      method: 'keep_first'  # 保留第一个
+      
+  # 修复限制
+  repair_limits:
+    max_missing_consecutive: 5  # 最大连续缺失值修复数量
+    max_repair_percentage: 10.0  # 最大修复数据百分比

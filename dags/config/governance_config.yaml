@@ -1,0 +1,456 @@
+# 数据治理配置文件
+# 定义数据治理策略、规则和标准
+
+# 数据血缘追踪配置
+lineage:
+  # 血缘数据库配置
+  database:
+    path: "/opt/airflow/data/lineage/lineage.db"
+    backup_path: "/opt/airflow/data/lineage/backups"
+    retention_days: 365
+    
+  # 自动发现配置
+  discovery:
+    enabled: true
+    scan_paths:
+      - "/opt/airflow/data/raw"
+      - "/opt/airflow/data/processed"
+      - "/opt/airflow/data/features"
+      - "/opt/airflow/data/models"
+    
+    file_patterns:
+      - "*.csv"
+      - "*.parquet"
+      - "*.pkl"
+      - "*.json"
+    
+    exclude_patterns:
+      - "*.tmp"
+      - "*.log"
+      - "*/.git/*"
+      - "*/temp/*"
+    
+    metadata_extraction:
+      enabled: true
+      include_schema: true
+      include_statistics: true
+      sample_size: 1000
+  
+  # 血缘关系推断规则
+  inference_rules:
+    - name: "file_name_similarity"
+      type: "string_similarity"
+      threshold: 0.8
+      weight: 0.7
+      
+    - name: "timestamp_proximity"
+      type: "temporal"
+      window_hours: 24
+      weight: 0.5
+      
+    - name: "directory_structure"
+      type: "path_based"
+      weight: 0.6
+      
+    - name: "schema_compatibility"
+      type: "schema_match"
+      threshold: 0.9
+      weight: 0.8
+
+# 版本管理配置
+versioning:
+  # 版本策略
+  strategy: "semantic"  # semantic, timestamp, incremental
+  
+  # 自动版本生成
+  auto_versioning:
+    enabled: true
+    format: "YYYY.MM.DD.HHMM"
+    include_hash: true
+    
+  # 版本保留策略
+  retention:
+    max_versions_per_asset: 10
+    retention_days: 90
+    cleanup_frequency: "daily"
+    
+  # 版本比较
+  comparison:
+    enabled: true
+    compare_schema: true
+    compare_statistics: true
+    compare_samples: true
+    sample_size: 1000
+    
+  # 版本标签
+  tags:
+    production: "prod"
+    staging: "stage"
+    development: "dev"
+    experimental: "exp"
+
+# 数据质量治理
+quality_governance:
+  # 质量标准
+  standards:
+    completeness:
+      threshold: 0.95
+      critical: true
+      
+    accuracy:
+      threshold: 0.98
+      critical: true
+      
+    consistency:
+      threshold: 0.90
+      critical: false
+      
+    timeliness:
+      max_delay_hours: 24
+      critical: true
+      
+    validity:
+      threshold: 0.95
+      critical: true
+  
+  # 质量检查规则
+  rules:
+    - name: "null_check"
+      type: "completeness"
+      description: "检查空值比例"
+      threshold: 0.05
+      action: "warn"
+      
+    - name: "duplicate_check"
+      type: "uniqueness"
+      description: "检查重复记录"
+      threshold: 0.01
+      action: "fail"
+      
+    - name: "range_check"
+      type: "validity"
+      description: "检查数值范围"
+      action: "warn"
+      
+    - name: "format_check"
+      type: "validity"
+      description: "检查数据格式"
+      action: "warn"
+      
+    - name: "freshness_check"
+      type: "timeliness"
+      description: "检查数据新鲜度"
+      max_age_hours: 48
+      action: "fail"
+  
+  # 质量监控
+  monitoring:
+    enabled: true
+    frequency: "hourly"
+    alert_threshold: 0.8
+    escalation_threshold: 0.6
+
+# 合规性配置
+compliance:
+  # 合规性标准
+  standards:
+    - name: "GDPR"
+      enabled: true
+      requirements:
+        - "data_minimization"
+        - "purpose_limitation"
+        - "storage_limitation"
+        - "data_protection"
+        
+    - name: "SOX"
+      enabled: true
+      requirements:
+        - "audit_trail"
+        - "access_control"
+        - "data_integrity"
+        
+    - name: "HIPAA"
+      enabled: false
+      requirements:
+        - "data_encryption"
+        - "access_logging"
+        - "data_anonymization"
+  
+  # 合规性检查
+  checks:
+    data_classification:
+      enabled: true
+      categories:
+        - "public"
+        - "internal"
+        - "confidential"
+        - "restricted"
+        
+    access_control:
+      enabled: true
+      require_authorization: true
+      log_access: true
+      
+    data_retention:
+      enabled: true
+      default_retention_days: 2555  # 7 years
+      enforce_deletion: true
+      
+    audit_trail:
+      enabled: true
+      log_all_operations: true
+      retention_days: 2555
+  
+  # 合规性评分
+  scoring:
+    weights:
+      lineage_coverage: 0.25
+      version_management: 0.20
+      quality_standards: 0.25
+      access_control: 0.15
+      audit_trail: 0.15
+      
+    thresholds:
+      excellent: 0.90
+      good: 0.75
+      fair: 0.60
+      poor: 0.00
+
+# 元数据管理
+metadata:
+  # 元数据标准
+  standards:
+    required_fields:
+      - "name"
+      - "description"
+      - "owner"
+      - "created_date"
+      - "data_type"
+      
+    optional_fields:
+      - "tags"
+      - "business_glossary"
+      - "technical_contact"
+      - "business_contact"
+      - "update_frequency"
+      - "data_source"
+      - "dependencies"
+  
+  # 元数据收集
+  collection:
+    auto_discovery: true
+    manual_entry: true
+    validation_required: true
+    
+  # 元数据同步
+  synchronization:
+    enabled: true
+    frequency: "daily"
+    conflict_resolution: "manual"
+
+# 数据目录配置
+catalog:
+  # 目录结构
+  structure:
+    by_domain: true
+    by_source: true
+    by_type: true
+    
+  # 搜索配置
+  search:
+    enabled: true
+    index_metadata: true
+    index_content: false
+    full_text_search: true
+    
+  # 访问控制
+  access_control:
+    enabled: true
+    role_based: true
+    attribute_based: false
+
+# 报告配置
+reporting:
+  # 报告类型
+  types:
+    - "lineage_summary"
+    - "quality_dashboard"
+    - "compliance_scorecard"
+    - "usage_analytics"
+    - "impact_analysis"
+    
+  # 报告格式
+  formats:
+    - "html"
+    - "json"
+    - "pdf"
+    - "csv"
+    
+  # 报告调度
+  schedule:
+    daily_reports:
+      - "quality_dashboard"
+      - "usage_analytics"
+      
+    weekly_reports:
+      - "lineage_summary"
+      - "compliance_scorecard"
+      
+    monthly_reports:
+      - "impact_analysis"
+      - "governance_summary"
+  
+  # 报告分发
+  distribution:
+    email:
+      enabled: true
+      recipients:
+        - "data-team@company.com"
+        - "governance@company.com"
+        
+    dashboard:
+      enabled: true
+      url: "http://localhost:8080/governance"
+      
+    api:
+      enabled: true
+      endpoint: "/api/governance/reports"
+
+# 告警配置
+alerting:
+  # 告警规则
+  rules:
+    lineage_gap:
+      enabled: true
+      threshold: 0.8
+      severity: "medium"
+      
+    quality_degradation:
+      enabled: true
+      threshold: 0.7
+      severity: "high"
+      
+    compliance_violation:
+      enabled: true
+      threshold: 0.6
+      severity: "critical"
+      
+    version_conflict:
+      enabled: true
+      severity: "medium"
+      
+    access_violation:
+      enabled: true
+      severity: "high"
+  
+  # 告警通道
+  channels:
+    email:
+      enabled: true
+      recipients:
+        - "alerts@company.com"
+        
+    slack:
+      enabled: true
+      webhook_url: "${SLACK_WEBHOOK_URL}"
+      channel: "#data-governance"
+      
+    pagerduty:
+      enabled: false
+      service_key: "${PAGERDUTY_SERVICE_KEY}"
+  
+  # 告警抑制
+  suppression:
+    enabled: true
+    duplicate_window_minutes: 60
+    escalation_delay_minutes: 30
+
+# 集成配置
+integrations:
+  # 外部系统
+  external_systems:
+    data_warehouse:
+      enabled: true
+      type: "postgresql"
+      connection_id: "postgres_default"
+      
+    data_lake:
+      enabled: true
+      type: "s3"
+      connection_id: "aws_default"
+      
+    bi_tools:
+      enabled: true
+      type: "tableau"
+      api_endpoint: "${TABLEAU_API_URL}"
+      
+    ml_platforms:
+      enabled: true
+      type: "mlflow"
+      tracking_uri: "${MLFLOW_TRACKING_URI}"
+  
+  # API配置
+  api:
+    enabled: true
+    version: "v1"
+    authentication: "token"
+    rate_limiting: true
+    
+  # 导入导出
+  import_export:
+    formats:
+      - "json"
+      - "yaml"
+      - "csv"
+      - "xml"
+      
+    validation: true
+    backup_before_import: true
+
+# 性能配置
+performance:
+  # 缓存配置
+  caching:
+    enabled: true
+    ttl_seconds: 3600
+    max_size_mb: 512
+    
+  # 批处理配置
+  batch_processing:
+    enabled: true
+    batch_size: 1000
+    parallel_workers: 4
+    
+  # 索引配置
+  indexing:
+    enabled: true
+    rebuild_frequency: "weekly"
+    optimize_frequency: "daily"
+
+# 安全配置
+security:
+  # 加密配置
+  encryption:
+    at_rest: true
+    in_transit: true
+    key_rotation_days: 90
+    
+  # 访问日志
+  access_logging:
+    enabled: true
+    log_level: "INFO"
+    retention_days: 365
+    
+  # 数据脱敏
+  data_masking:
+    enabled: true
+    pii_detection: true
+    masking_rules:
+      - field_pattern: ".*email.*"
+        mask_type: "email"
+        
+      - field_pattern: ".*phone.*"
+        mask_type: "phone"
+        
+      - field_pattern: ".*ssn.*"
+        mask_type: "ssn"

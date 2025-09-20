@@ -1,0 +1,386 @@
+# 告警配置文件
+# 定义各种告警规则、阈值和通知渠道
+
+# 告警阈值配置
+thresholds:
+  # 数据质量阈值
+  data_quality:
+    overall_score:
+      critical: 60.0    # 低于60分为严重告警
+      warning: 80.0     # 低于80分为警告
+      good: 90.0        # 高于90分为良好
+    
+    completeness:
+      critical: 70.0    # 数据完整性低于70%
+      warning: 85.0     # 数据完整性低于85%
+      good: 95.0        # 数据完整性高于95%
+    
+    accuracy:
+      critical: 75.0    # 数据准确性低于75%
+      warning: 85.0     # 数据准确性低于85%
+      good: 95.0        # 数据准确性高于95%
+    
+    consistency:
+      critical: 70.0    # 数据一致性低于70%
+      warning: 80.0     # 数据一致性低于80%
+      good: 90.0        # 数据一致性高于90%
+  
+  # 流水线性能阈值
+  pipeline_performance:
+    success_rate:
+      critical: 70.0    # 成功率低于70%
+      warning: 85.0     # 成功率低于85%
+      good: 95.0        # 成功率高于95%
+    
+    processing_time:
+      # 处理时间阈值（秒）
+      data_ingestion:
+        critical: 3600    # 1小时
+        warning: 1800     # 30分钟
+        good: 900         # 15分钟
+      
+      data_cleaning:
+        critical: 7200    # 2小时
+        warning: 3600     # 1小时
+        good: 1800        # 30分钟
+      
+      feature_engineering:
+        critical: 10800   # 3小时
+        warning: 5400     # 1.5小时
+        good: 2700        # 45分钟
+    
+    error_rate:
+      critical: 10.0    # 错误率高于10%
+      warning: 5.0      # 错误率高于5%
+      good: 1.0         # 错误率低于1%
+  
+  # 系统资源阈值
+  system_resources:
+    disk_usage:
+      critical: 90.0    # 磁盘使用率高于90%
+      warning: 80.0     # 磁盘使用率高于80%
+      good: 70.0        # 磁盘使用率低于70%
+    
+    memory_usage:
+      critical: 85.0    # 内存使用率高于85%
+      warning: 75.0     # 内存使用率高于75%
+      good: 60.0        # 内存使用率低于60%
+    
+    cpu_usage:
+      critical: 90.0    # CPU使用率高于90%
+      warning: 80.0     # CPU使用率高于80%
+      good: 60.0        # CPU使用率低于60%
+
+# 告警规则配置
+alert_rules:
+  # 数据质量告警规则
+  data_quality_alerts:
+    - name: "数据质量严重下降"
+      condition: "overall_score < thresholds.data_quality.overall_score.critical"
+      severity: "critical"
+      description: "整体数据质量分数低于临界阈值"
+      action: ["email", "slack", "sms"]
+      cooldown: 3600  # 1小时内不重复告警
+    
+    - name: "数据完整性不足"
+      condition: "completeness < thresholds.data_quality.completeness.warning"
+      severity: "warning"
+      description: "数据完整性低于警告阈值"
+      action: ["email", "slack"]
+      cooldown: 1800  # 30分钟内不重复告警
+    
+    - name: "数据准确性问题"
+      condition: "accuracy < thresholds.data_quality.accuracy.warning"
+      severity: "warning"
+      description: "数据准确性低于警告阈值"
+      action: ["email", "slack"]
+      cooldown: 1800
+    
+    - name: "数据一致性异常"
+      condition: "consistency < thresholds.data_quality.consistency.critical"
+      severity: "critical"
+      description: "数据一致性严重异常"
+      action: ["email", "slack", "sms"]
+      cooldown: 3600
+  
+  # 流水线性能告警规则
+  pipeline_alerts:
+    - name: "流水线成功率过低"
+      condition: "success_rate < thresholds.pipeline_performance.success_rate.critical"
+      severity: "critical"
+      description: "流水线成功率低于临界阈值"
+      action: ["email", "slack", "sms"]
+      cooldown: 1800
+    
+    - name: "处理时间过长"
+      condition: "processing_time > thresholds.pipeline_performance.processing_time.*.critical"
+      severity: "warning"
+      description: "数据处理时间超过预期"
+      action: ["email", "slack"]
+      cooldown: 3600
+    
+    - name: "错误率过高"
+      condition: "error_rate > thresholds.pipeline_performance.error_rate.warning"
+      severity: "warning"
+      description: "流水线错误率过高"
+      action: ["email", "slack"]
+      cooldown: 1800
+  
+  # 系统资源告警规则
+  system_alerts:
+    - name: "磁盘空间不足"
+      condition: "disk_usage > thresholds.system_resources.disk_usage.critical"
+      severity: "critical"
+      description: "磁盘使用率过高，可能影响数据存储"
+      action: ["email", "slack", "sms"]
+      cooldown: 1800
+    
+    - name: "内存使用率过高"
+      condition: "memory_usage > thresholds.system_resources.memory_usage.critical"
+      severity: "warning"
+      description: "内存使用率过高，可能影响性能"
+      action: ["email", "slack"]
+      cooldown: 3600
+    
+    - name: "CPU使用率过高"
+      condition: "cpu_usage > thresholds.system_resources.cpu_usage.warning"
+      severity: "warning"
+      description: "CPU使用率过高，可能影响处理速度"
+      action: ["email", "slack"]
+      cooldown: 3600
+
+# 通知渠道配置
+notification_channels:
+  # 邮件通知配置
+  email:
+    enabled: true
+    smtp_server: "smtp.gmail.com"
+    smtp_port: 587
+    use_tls: true
+    sender_email: "ml-alerts@company.com"
+    sender_name: "ML Pipeline Alerts"
+    
+    # 收件人配置
+    recipients:
+      critical:
+        - "data-team-lead@company.com"
+        - "devops-team@company.com"
+        - "on-call@company.com"
+      warning:
+        - "data-team@company.com"
+        - "ml-engineers@company.com"
+      info:
+        - "data-team@company.com"
+    
+    # 邮件模板
+    templates:
+      subject: "[{severity}] ML Pipeline Alert: {alert_name}"
+      body_template: |
+        Alert: {alert_name}
+        Severity: {severity}
+        Time: {timestamp}
+        
+        Description: {description}
+        
+        Metric: {metric_name} = {metric_value}
+        Threshold: {threshold}
+        
+        Affected Components: {affected_components}
+        
+        Recommended Actions:
+        {recommendations}
+        
+        Dashboard: {dashboard_url}
+        Logs: {logs_url}
+  
+  # Slack通知配置
+  slack:
+    enabled: true
+    webhook_url: "${SLACK_WEBHOOK_URL}"  # 从环境变量获取
+    
+    # 频道配置
+    channels:
+      critical: "#alerts-critical"
+      warning: "#alerts-warning"
+      info: "#data-quality"
+    
+    # 消息模板
+    templates:
+      message_template: |
+        :warning: *{severity} Alert*
+        
+        *Alert:* {alert_name}
+        *Time:* {timestamp}
+        *Description:* {description}
+        
+        *Metric:* {metric_name} = {metric_value}
+        *Threshold:* {threshold}
+        
+        *Actions:*
+        {recommendations}
+        
+        <{dashboard_url}|View Dashboard> | <{logs_url}|View Logs>
+  
+  # SMS通知配置（仅用于严重告警）
+  sms:
+    enabled: false  # 默认禁用，需要配置SMS服务
+    provider: "twilio"  # 或其他SMS服务提供商
+    
+    # 接收人配置
+    recipients:
+      critical:
+        - "+1234567890"  # 值班人员电话
+        - "+0987654321"  # 团队负责人电话
+    
+    # 消息模板
+    templates:
+      message_template: "ML Alert: {alert_name} - {description}. Check dashboard for details."
+
+# 告警抑制配置
+alert_suppression:
+  # 全局抑制规则
+  global_rules:
+    - name: "维护窗口抑制"
+      description: "在维护窗口期间抑制所有告警"
+      schedule: "0 2-4 * * 0"  # 每周日凌晨2-4点
+      suppress_all: true
+    
+    - name: "已知问题抑制"
+      description: "抑制已知问题的重复告警"
+      conditions:
+        - "alert_name in ['数据源临时不可用', 'API限流']"
+      duration: 7200  # 2小时
+  
+  # 级联抑制规则
+  cascade_rules:
+    - name: "上游失败抑制下游告警"
+      description: "当上游DAG失败时，抑制下游相关告警"
+      trigger: "dag_failure"
+      suppress_patterns:
+        - "data_cleaning_*"  # 当数据获取失败时，抑制数据清洗相关告警
+        - "feature_engineering_*"  # 抑制特征工程相关告警
+      duration: 3600  # 1小时
+  
+  # 频率限制
+  rate_limiting:
+    max_alerts_per_hour: 10
+    max_alerts_per_day: 50
+    burst_threshold: 5  # 5分钟内超过5个告警视为突发
+    burst_cooldown: 1800  # 突发后冷却30分钟
+
+# 告警升级配置
+escalation:
+  # 升级规则
+  rules:
+    - name: "严重告警升级"
+      trigger_severity: "critical"
+      escalation_levels:
+        - level: 1
+          delay: 0  # 立即通知
+          channels: ["email", "slack"]
+          recipients: ["data-team-lead@company.com"]
+        
+        - level: 2
+          delay: 1800  # 30分钟后升级
+          channels: ["email", "slack", "sms"]
+          recipients: ["devops-team@company.com", "on-call@company.com"]
+        
+        - level: 3
+          delay: 3600  # 1小时后再次升级
+          channels: ["email", "sms"]
+          recipients: ["cto@company.com"]
+    
+    - name: "警告告警升级"
+      trigger_severity: "warning"
+      escalation_levels:
+        - level: 1
+          delay: 0
+          channels: ["email", "slack"]
+          recipients: ["data-team@company.com"]
+        
+        - level: 2
+          delay: 7200  # 2小时后升级
+          channels: ["email"]
+          recipients: ["data-team-lead@company.com"]
+
+# 仪表板和报告配置
+dashboard:
+  # 仪表板URL配置
+  urls:
+    main_dashboard: "http://localhost:8080/admin/airflow/graph?dag_id=monitoring_dag"
+    quality_dashboard: "http://localhost:3000/d/data-quality"
+    performance_dashboard: "http://localhost:3000/d/pipeline-performance"
+  
+  # 报告配置
+  reports:
+    daily_summary:
+      enabled: true
+      schedule: "0 9 * * *"  # 每天上午9点
+      recipients: ["data-team@company.com"]
+      format: "html"
+    
+    weekly_report:
+      enabled: true
+      schedule: "0 9 * * 1"  # 每周一上午9点
+      recipients: ["management@company.com", "data-team-lead@company.com"]
+      format: "pdf"
+    
+    monthly_analysis:
+      enabled: true
+      schedule: "0 9 1 * *"  # 每月1号上午9点
+      recipients: ["cto@company.com", "data-team-lead@company.com"]
+      format: "pdf"
+
+# 集成配置
+integrations:
+  # 监控系统集成
+  monitoring_systems:
+    prometheus:
+      enabled: false
+      endpoint: "http://prometheus:9090"
+      metrics_prefix: "ml_pipeline"
+    
+    grafana:
+      enabled: false
+      endpoint: "http://grafana:3000"
+      dashboard_id: "ml-pipeline-monitoring"
+    
+    datadog:
+      enabled: false
+      api_key: "${DATADOG_API_KEY}"
+      app_key: "${DATADOG_APP_KEY}"
+  
+  # 日志系统集成
+  logging_systems:
+    elasticsearch:
+      enabled: false
+      endpoint: "http://elasticsearch:9200"
+      index_pattern: "ml-pipeline-logs-*"
+    
+    splunk:
+      enabled: false
+      endpoint: "https://splunk.company.com"
+      index: "ml_pipeline"
+
+# 测试配置
+testing:
+  # 告警测试配置
+  test_alerts:
+    enabled: true
+    schedule: "0 10 * * 1"  # 每周一上午10点测试告警
+    test_channels: ["email"]
+    test_recipients: ["data-team-test@company.com"]
+  
+  # 模拟告警配置
+  simulation:
+    enabled: false
+    scenarios:
+      - name: "数据质量下降"
+        trigger_conditions:
+          overall_score: 65.0
+        expected_alerts: ["数据质量严重下降"]
+      
+      - name: "流水线失败"
+        trigger_conditions:
+          success_rate: 60.0
+        expected_alerts: ["流水线成功率过低"]

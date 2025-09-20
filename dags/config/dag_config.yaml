@@ -1,0 +1,111 @@
+# Airflow DAG通用配置
+
+# 默认DAG参数
+default_args:
+  owner: 'ml_team'
+  depends_on_past: false
+  start_date: '2024-01-01'
+  email_on_failure: true
+  email_on_retry: false
+  retries: 2
+  retry_delay_minutes: 5
+  max_active_runs: 1
+
+# 邮件通知配置
+email_config:
+  smtp_host: 'smtp.gmail.com'
+  smtp_port: 587
+  smtp_user: 'your-email@gmail.com'
+  smtp_password: 'your-app-password'
+  failure_recipients:
+    - 'admin@company.com'
+    - 'data-team@company.com'
+
+# DAG调度配置
+schedule_config:
+  data_ingestion:
+    schedule_interval: '0 * * * *'  # 每小时执行
+    catchup: false
+    max_active_runs: 1
+    
+  data_quality:
+    schedule_interval: null  # 由上游DAG触发
+    catchup: false
+    max_active_runs: 1
+    
+  data_cleaning:
+    schedule_interval: null  # 由上游DAG触发
+    catchup: false
+    max_active_runs: 1
+    
+  feature_engineering:
+    schedule_interval: null  # 由上游DAG触发
+    catchup: false
+    max_active_runs: 1
+    
+  data_validation:
+    schedule_interval: null  # 由上游DAG触发
+    catchup: false
+    max_active_runs: 1
+
+# 任务超时配置
+timeout_config:
+  data_fetch_timeout_minutes: 30
+  data_processing_timeout_minutes: 60
+  feature_calculation_timeout_minutes: 45
+  quality_check_timeout_minutes: 20
+
+# 重试策略配置
+retry_config:
+  api_tasks:
+    retries: 3
+    retry_delay_minutes: 2
+    retry_exponential_backoff: true
+    
+  processing_tasks:
+    retries: 2
+    retry_delay_minutes: 5
+    retry_exponential_backoff: false
+    
+  quality_checks:
+    retries: 1
+    retry_delay_minutes: 1
+    retry_exponential_backoff: false
+
+# 资源配置
+resource_config:
+  default_pool: 'default_pool'
+  data_processing_pool: 'data_processing_pool'
+  api_pool: 'api_pool'
+  
+  pool_slots:
+    default_pool: 16
+    data_processing_pool: 8
+    api_pool: 4
+
+# 数据路径配置
+data_paths:
+  base_data_dir: '/opt/airflow/data'
+  raw_data_dir: '/opt/airflow/data/raw'
+  processed_data_dir: '/opt/airflow/data/processed'
+  features_data_dir: '/opt/airflow/data/features'
+  logs_dir: '/opt/airflow/logs'
+  temp_dir: '/opt/airflow/temp'
+
+# SLA配置
+sla_config:
+  data_ingestion_sla_hours: 2
+  data_processing_sla_hours: 4
+  feature_engineering_sla_hours: 6
+  end_to_end_sla_hours: 8
+
+# 监控配置
+monitoring_config:
+  enable_task_duration_alerts: true
+  enable_data_quality_alerts: true
+  enable_failure_alerts: true
+  
+  alert_thresholds:
+    task_duration_multiplier: 2.0  # 超过平均时间2倍时告警
+    data_quality_score_threshold: 0.8  # 数据质量分数低于0.8时告警
+    consecutive_failures_threshold: 3  # 连续失败3次时告警
