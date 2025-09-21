@@ -15,6 +15,11 @@ lightgbm>=4.0.0
 xgboost>=1.7.0
 catboost>=1.2.0
 
+# 特征选择和解释性
+shap>=0.42.0  # SHAP特征重要性分析
+eli5>=0.13.0  # 模型解释（可选）
+feature-engine>=1.6.0  # 特征工程工具（可选）
+
 # 深度学习（可选）
 torch>=2.0.0
 tensorflow>=2.13.0
